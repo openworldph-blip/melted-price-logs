@@ -107,7 +107,8 @@ function transactions(list){
   s.items.map(([name,qty,price])=>row(name+' · '+qty+' × '+fmt(price),fmt(qty*price))).join('')+
   row('Discount',fmt(s.discount))+(paymentFilter==='Review'?'<div class="review-notes">'+reviewNotes(s)+'</div>':'')+row('Total paid',fmt(total(s)))+'</article>').join('')||'<p>No matching transactions.</p>');
 }
-const today='2026-11-13';
+const sampleDay='2026-11-13';
+let today=sampleDay, connectedSales=false;
 const ago=n=>new Date(Date.parse(today)-n*86400000).toISOString().slice(0,10);
 sales.forEach(s=>s.date=today);
 for(const [d,i] of [[1,0],[1,3],[2,1],[4,4],[6,2],[9,3],[15,0],[22,4]])sales.push({...sales[i],date:ago(d)});
@@ -272,6 +273,7 @@ function productEditor(){
   '<label>Apply to<select name="site">'+productBranches()+'</select></label><button>Save in preview</button></form>');
 }
 function previewResetControls(){
+ if(connectedSales)return '';
  return '<details><summary>Reset preview sales</summary><p>'+sales.length+' sample transactions in this session. The product catalog stays in place.</p>'+
  '<div class="filters"><button data-kind="clear-preview"'+(sales.length?'':' disabled')+'>Clear sample sales</button>'+
  '<button data-kind="restore-preview"'+(sales.length?' disabled':'')+'>Restore sample sales</button></div></details>';
@@ -350,10 +352,10 @@ document.addEventListener('click',event=>{
  if(!control)return;
  const {kind,value}=control.dataset;
  if(kind==='clear-preview'){
-  if(!sales.length||!confirm('Clear '+sales.length+' sample transactions from this preview?'))return;
+  if(connectedSales||!sales.length||!confirm('Clear '+sales.length+' sample transactions from this preview?'))return;
   sales.length=0;
  }
- if(kind==='restore-preview'&&!sales.length)sales.push(...originalSampleSales);
+ if(kind==='restore-preview'&&!connectedSales&&!sales.length)sales.push(...originalSampleSales);
  if(kind==='product-mode'){productMode=value;productIndex=-1;productNotice='';}
  if(kind==='edit-product'){productIndex=Number(value);productNotice='';}
  if(kind==='branch')branch=value;
@@ -366,21 +368,61 @@ document.addEventListener('click',event=>{
  if(kind==='date'){selected=value;tab='Today';}
  render();
 });
+window.setMeltedCloudSales = (records) => {
+ const wasConnected=connectedSales;
+ connectedSales=records!==null;
+ const stamp=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila',year:'numeric',month:'2-digit',day:'2-digit'});
+ const dateOf=at=>{const p=Object.fromEntries(stamp.formatToParts(at).map(x=>[x.type,x.value]));return p.year+'-'+p.month+'-'+p.day;};
+ today=connectedSales?dateOf(Date.now()):sampleDay;
+ if(wasConnected!==connectedSales)selected=today;
+ const rows=connectedSales?records.flatMap(([branch,entry])=>{
+  if(!entry||entry.void||!Array.isArray(entry.items)||!Number.isFinite(entry.at)||Math.abs(entry.at)>8.64e15)return [];
+  const items=entry.items.filter(i=>i&&Number.isFinite(i.qty)&&Number.isFinite(i.price)).map(i=>[safeText(i.name),i.qty,i.price/100]);
+  const added=entry.items.find(i=>i&&i.id===null&&Number.isFinite(i.qty)&&Number.isFinite(i.price));
+  const changed=entry.items.find(i=>i&&Number.isFinite(i.originalPrice)&&Number.isFinite(i.price));
+  return [{branch,date:dateOf(entry.at),number:safeText(String(entry.dailyNumber||entry.number||'').padStart(3,'0')),time:new Date(entry.at).toLocaleTimeString('en-US',{timeZone:'Asia/Manila',hour:'numeric',minute:'2-digit'}),cashier:safeText(String(entry.cashier||'Unknown').replaceAll('|',' ')),payment:entry.method==='GCash'?'GCash':'Cash',discount:Number.isFinite(entry.discount)?entry.discount/100:0,items,at:entry.at,
+    unlisted:added?[safeText(added.name),added.qty,added.price/100]:null,
+    priceChange:changed?{name:safeText(changed.name),old:changed.originalPrice/100,charged:changed.price/100,reason:safeText(changed.reason||'')}:null}];
+ }).sort((a,b)=>b.at-a.at):originalSampleSales;
+ sales.splice(0,sales.length,...rows);
+ for(const site of locations){const last=connectedSales?rows.find(s=>s.branch===site):null;sync[site]=connectedSales?(last?last.date+' '+last.time:'No upload yet'):(site==='Porta'?'2:05 PM':'11:48 AM');}
+ const badge=document.querySelector('header small');
+ if(badge)badge.textContent=connectedSales?'Pilot uploads':'Sample data';
+ render();
+};
 render();
 </script>
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import { getDatabase, onValue, ref } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
 const config={apiKey:"AIzaSyCK5n0efqLA2koA7tSbS3ZBsAyT4__0UbI",authDomain:"melted-price-logs-pilot.firebaseapp.com",projectId:"melted-price-logs-pilot",appId:"1:137320424133:web:0a5f81e7bee48e4c9d46ac"};
-const auth=getAuth(initializeApp(config));
+const app=initializeApp(config);
+const auth=getAuth(app);
+const database=getDatabase(app,'https://melted-price-logs-pilot-default-rtdb.asia-southeast1.firebasedatabase.app');
+let stopSales;
 const login=document.querySelector('#owner-sign-in');
 const logout=document.querySelector('#owner-sign-out');
 const status=document.querySelector('#owner-status');
 onAuthStateChanged(auth,user=>{
+ stopSales?.();
+ stopSales=undefined;
  login.hidden=Boolean(user);
  login.disabled=false;
  logout.hidden=!user;
- status.textContent=user?'Signed in · '+user.email+' · Sample dashboard':'Sign in to test your owner account. The dashboard shows sample data.';
+ if(!user||user.uid!=='SefNfee1nKURnXcOMrzRuxYihVI3'){
+  window.setMeltedCloudSales(null);
+  status.textContent=user?'This account is not yet authorized for pilot sales.':'Sign in to view pilot uploads.';
+  return;
+ }
+ window.setMeltedCloudSales([]);
+ status.textContent='Checking for pilot uploads…';
+ stopSales=onValue(ref(database,'sales'),snapshot=>{
+  const data=snapshot.val()||{};
+  const rows=[['Porta',data.porta],['Center Mall',data['center-mall']]].flatMap(([branch,sales])=>Object.values(sales||{}).map(sale=>[branch,sale]));
+  window.setMeltedCloudSales(rows);
+  status.textContent=rows.length?'Connected · '+rows.length+' pilot uploads':'Connected · Waiting for the first pilot upload';
+ },()=>{window.setMeltedCloudSales([]);status.textContent='Firebase denied sales access. Check the published database rules.';});
 },()=>{status.textContent='Could not check sign-in. Reload to retry.';});
 login.addEventListener('click',async()=>{
  login.disabled=true;
