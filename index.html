@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Melted Price Logs | Owner Preview</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#fff7ed;color:#2b2019;font:16px system-ui,sans-serif}header{background:#ff983c;padding:16px}header div,main{max-width:580px;margin:auto}header strong{font-size:21px}header small{display:block}main{padding:14px}.filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}button{border:1px solid #bf9d87;border-radius:9px;padding:9px 10px;background:white;color:inherit;font:inherit;cursor:pointer}button[aria-pressed=true]{background:#963600;border-color:#963600;color:white}.card,details{background:white;border:1px solid #e5cdbb;border-radius:12px;padding:12px;margin:8px 0}h1,h2{font-size:18px;margin:0 0 8px}.total{display:block;font-size:clamp(32px,9vw,46px);line-height:1.12}.row{display:flex;justify-content:space-between;gap:10px;align-items:baseline}.row strong{white-space:nowrap}.muted,small{color:#684a37}.pending{color:#852c06;font-weight:650}summary{cursor:pointer}.split{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.split div{background:#fff4e4;border-radius:8px;padding:7px}.split strong{display:block}.order-line{padding:5px 0;border-bottom:1px solid #f0e3d9}.empty{padding:12px 0}
+header{background:#49220f;color:white}header span{color:#ffb250}header small{color:#ffe0c8}.navigation{background:white;border-bottom:1px solid #e5cdbb}.navigation nav{max-width:580px;margin:0 auto;padding:7px 12px;flex-wrap:nowrap;overflow:auto}.navigation #tabs{border-bottom:1px solid #f0e3d9}.navigation #tabs button{border:0;border-radius:5px;font-weight:700}.navigation #branches button{border-radius:999px;white-space:nowrap;font-size:14px}.chart{height:96px;display:flex;align-items:end;gap:3px;padding:4px}.chart div{flex:1;min-width:0}.chart i{display:block;background:#db641d;border-radius:4px 4px 0 0}
+.date-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}.date-row input{padding:7px;font:inherit}.history-day{width:100%;margin:4px 0;text-align:left}.daily-heading{margin-top:8px;font-size:14px}.transaction-controls{background:#fff4e4;border-radius:10px;padding:10px}.transaction-controls label{display:flex;align-items:center;gap:8px;margin-bottom:8px}.transaction-controls select{flex:1;min-width:0;font:inherit;padding:8px;border:1px solid #bf9d87;border-radius:8px;background:white}.branch-card+.branch-card{border-top:1px solid #e5cdbb;margin-top:10px;padding-top:5px}.branch-card .order-line{border-bottom:0}.branch-card .muted{font-size:14px}.today-top{margin:0;padding:0;list-style:none;counter-reset:rank;font-size:13px}.today-top li{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:5px;padding:4px 0;counter-increment:rank}.today-top li::before{content:counter(rank) ".";color:#684a37}.today-top strong{white-space:nowrap}.top-branch{display:flex;align-items:center;gap:7px;font-size:13px;margin-bottom:5px}.top-branch select{font:inherit;padding:5px 8px;border:1px solid #bf9d87;border-radius:6px;background:white}.top-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.top-columns section+section{border-left:1px solid #e5cdbb;padding-left:8px}.top-columns h3{font-size:14px;margin:0 0 4px}.top-columns .today-top li{grid-template-columns:16px minmax(0,1fr) auto;gap:3px;padding:3px 0}.top-columns .today-top span{overflow-wrap:anywhere}.transaction-entry{font-size:13px;padding:8px;margin:5px 0}.transaction-entry>small{display:block}.transaction-entry .order-line{padding:2px 0;gap:6px}.sales-hero{background:#ffad63;border-color:#ce601d;color:#40200c}.sales-hero .split div{background:#fff4e4}.sales-hero small{color:#4d2d19}.branch-card .order-line>span{font-size:19px;font-weight:800;color:#a43809}.branch-card+.branch-card .order-line>span{color:#214f85}.branch-card .order-line>strong{font-size:clamp(20px,6vw,28px);font-variant-numeric:tabular-nums}.review-notes .row strong{white-space:normal;text-align:right}.item-ranking li{grid-template-columns:20px minmax(0,1fr) 3ch minmax(9ch,auto)}.item-ranking strong{text-align:right}.item-list-heading{display:grid;grid-template-columns:minmax(0,1fr) 3ch minmax(9ch,auto);gap:5px;font-size:12px;font-weight:700;text-align:right}.item-list-heading span:first-child{text-align:left}:root{color-scheme:light;--ink:#352219;--muted:#6f5141;--cream:#fff6ed;--border:#ecd9ca;--orange:#9b3509}
+body{background:radial-gradient(ellipse at top,#ffe6cc 0,transparent 440px),var(--cream);color:var(--ink);font-family:"DM Sans",system-ui,sans-serif}
+header{background:linear-gradient(105deg,#402116,#683519);padding:16px 14px;color:#fff7eb}
+header strong{font-size:24px;letter-spacing:-.04em}header span{color:#ffc178}header small{font-size:12px;background:#fff1db;color:#63391e;border-radius:20px;padding:5px 9px}
+.navigation{background:#fffdf9;border-color:var(--border)}.navigation nav{gap:7px}
+button{font-size:14px;font-weight:650;border-color:#d6b9a5;background:#fffdf9}button:hover{border-color:#a84213}button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid #a84213;outline-offset:2px}
+button[aria-pressed=true]{background:var(--orange);border-color:var(--orange);color:white}.navigation #tabs button{border-radius:8px;white-space:nowrap}
+main{padding:14px 12px 24px}.card,details{border-color:var(--border);border-radius:15px;box-shadow:0 2px 9px #5328110a}.card{padding:13px}.card h1,.card h2{letter-spacing:-.02em}
+.sales-hero{background:linear-gradient(120deg,#ffd29c,#ffac63);border-color:#e9904c;box-shadow:0 4px 14px #99451220}.sales-hero .total{font-weight:850;letter-spacing:-.045em;margin:4px 0}.sales-hero .split div{background:#fff7eb;border:1px solid #eeb782;border-radius:10px}
+.branch-card{padding:3px 4px}.branch-card+.branch-card{border-color:var(--border);padding-top:8px}.top-columns h3{color:#843209}.top-columns section+section h3{color:#214f85}
+.transaction-controls{background:#fff0dc;border:1px solid #f0d6b7}.transaction-entry>strong{color:#763414}.transaction-entry{box-shadow:none}.chart i{background:linear-gradient(#ffad63,#c54c14)}
+.item-list-heading,.item-ranking li{grid-template-columns:20px minmax(0,1fr) 4ch 12ch;gap:6px}.item-list-heading span:first-child{grid-column:span 2}.item-list-heading{padding:7px 5px;background:#ffe9ce;border-radius:7px;color:#623519}.item-ranking li{padding:7px 5px;border-bottom:1px solid #f2e7df}.item-ranking li:nth-child(even){background:#fffbf6}.item-ranking li:last-child{border-bottom:0}.item-ranking strong{font-variant-numeric:tabular-nums}
+.hour-row{display:grid;grid-template-columns:5ch minmax(0,1fr) auto;gap:8px;align-items:center;font-size:13px;margin:6px 0}.hour-track{height:9px;border-radius:8px;background:#ffefdf}.hour-track i{display:block;height:100%;border-radius:8px;background:#ba4c13}.hour-row strong{font-variant-numeric:tabular-nums}.card.hourly-card{padding:0;overflow:hidden}.hour-heading{display:flex;justify-content:space-between;align-items:center;gap:8px;background:#913607;color:white;padding:9px 11px}.hour-heading h2{margin:0}.hour-heading small{color:#ffe2b9;font-size:11px;text-align:right}.hour-body{padding:8px}.hour-chart{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:2px;margin-bottom:12px}.hour-column{text-align:center;font-size:9px;color:#6f5141;min-width:0}.hour-bar-space{height:82px;display:flex;flex-direction:column;justify-content:end;align-items:center;border-bottom:1px solid #eed6c3;margin-bottom:3px}.hour-bar-space small{font-size:8px;white-space:nowrap;color:#653018}.hour-bar-space i{display:block;width:100%;background:#eab84e;border-radius:3px 3px 0 0}.hour-bar-space .peak-bar{background:#a63d12}.hour-body h3{font-size:12px;margin:4px 0 6px;color:#763414}.busiest-hours{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}.busiest-hours div{text-align:center;background:#fff4df;border:1px solid #e8b96d;border-radius:8px;padding:5px 2px}.busiest-hours small{display:block;font-size:11px}
+.insights-table{width:100%;border-collapse:collapse;font-size:13px}.insights-table th,.insights-table td{padding:6px 3px;text-align:right;border-bottom:1px solid #ecd9ca}.insights-table th:first-child{text-align:left}.insights-table thead{background:#ffe9ce}.insight-search{display:grid;gap:4px;margin:8px 0}.insight-search input{font:inherit;padding:8px;border:1px solid #bf9d87;border-radius:8px;width:100%}.insights-table{margin:8px 0}#bulk-import{display:grid;gap:8px;margin-top:12px}#bulk-import label{display:grid;gap:4px}#bulk-import textarea,#bulk-import select{width:100%;padding:8px;border:1px solid #bf9d87;border-radius:8px;font:inherit}#product-search,#product-editor input,#product-editor select{width:100%;padding:8px;border:1px solid #bf9d87;border-radius:8px;font:inherit}#product-editor,#product-editor label{display:grid;gap:6px}#product-results{display:grid;gap:5px;margin-top:8px}.product-result{text-align:left}.product-result small{display:block;margin-top:3px}</style>
+</head>
+<body>
+<header><div class="row"><strong>Melted <span>all</span></strong><small>Sample data</small></div></header>
+<div class="navigation"><nav id="tabs" class="filters" aria-label="Report"></nav><nav id="branches" class="filters" aria-label="Branch"></nav></div>
+<main><div id="report"></div>
+</main>
+<script>
+'use strict';
+const locations=['Porta','Center Mall'];
+const sales=[
+ {branch:'Porta',number:'003',time:'2:05 PM',cashier:'Ana',payment:'Cash',discount:5,items:[['Pepero Almond Green',2,40],['SF Nut and Seed Original Mix',1,85]]},
+ {branch:'Porta',number:'002',time:'1:26 PM',cashier:'Ben',payment:'GCash',discount:0,items:[['SF Sunflower Seeds 500g',2,105]]},
+ {branch:'Porta',number:'001',time:'9:42 AM',cashier:'Ana',payment:'Cash',discount:0,items:[['Pepero Strawberry',3,40]]},
+ {branch:'Center Mall',number:'002',time:'11:48 AM',cashier:'Mia',payment:'GCash',discount:0,items:[['Pepero White Cookies',4,40],['SF Nut and Seed Original Mix',1,85]]},
+ {branch:'Center Mall',number:'001',time:'9:12 AM',cashier:'Mia',payment:'Cash',discount:10,items:[['Pepero Strawberry',2,40]]}
+];
+sales[1].unlisted=['Chocolate single piece',1,15];
+sales[1].items=[...sales[1].items,sales[1].unlisted];
+sales[0].priceChange={name:'Pepero Almond Green',old:42,charged:40,reason:'Shelf price differs'};
+const sync={'Porta':'2:05 PM','Center Mall':'11:48 AM'};
+const money=new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'});
+const fmt=value=>money.format(value);
+const sum=(list,read)=>list.reduce((total,item)=>total+read(item),0);
+const total=sale=>sum(sale.items,item=>item[1]*item[2])-sale.discount;
+const row=(label,value)=>'<div class="row order-line"><span>'+label+'</span><strong>'+value+'</strong></div>';
+const card=(title,body)=>'<section class="card"><h2>'+title+'</h2>'+body+'</section>';
+let branch='Both branches';
+
+let tab='Today';
+
+let cashierFilter='', paymentFilter='All';
+function buttons(values,selection,kind){
+ return values.map(value=>'<button data-kind="'+kind+'" data-value="'+value+'" aria-pressed="'+(value===selection)+'">'+value+'</button>').join('');
+}
+function overview(list){
+ const byPayment=method=>sum(list.filter(sale=>sale.payment===method),total);
+ const visible=branch==='Both branches'?locations:[branch];
+ return '<section class="card sales-hero"><h1>Total sales · '+branch+'</h1><strong class="total">'+fmt(sum(list,total))+'</strong>'+
+  '<small>'+list.length+' transactions · '+fmt(sum(list,sale=>sale.discount))+' discounts</small>'+
+  '<div class="split"><div>Cash<strong>'+fmt(byPayment('Cash'))+'</strong></div><div>GCash<strong>'+fmt(byPayment('GCash'))+'</strong></div></div></section>'+
+  (branch==='Both branches'?card('Branch sync',visible.map(name=>{
+    const orders=list.filter(s=>s.branch===name);
+    const paid=method=>sum(orders.filter(s=>s.payment===method),total);
+    return '<div class="branch-card">'+row(name,fmt(sum(orders,total)))+
+      '<div class="muted">Cash '+fmt(paid('Cash'))+' · GCash '+fmt(paid('GCash'))+'</div>'+
+      '<small class="'+(name==='Center Mall'?'pending':'muted')+'">Last sync '+sync[name]+(name==='Center Mall'?' · Sales may be incomplete':'')+'</small></div>';
+  }).join('')):'');
+}
+function todayTopItems(list){
+ const columns=locations.map(site=>{
+  const units=new Map();
+  for(const sale of list.filter(s=>s.branch===site))for(const [name,qty] of sale.items)
+   units.set(name,(units.get(name)||0)+qty);
+  const top=[...units].sort(([a,x],[b,y])=>y-x||a.localeCompare(b)).slice(0,10);
+  return '<section><h3>'+site+'</h3>'+(top.length?
+   '<ol class="today-top">'+top.map(([name,qty])=>'<li><span>'+name+'</span><strong>'+qty+'</strong></li>').join('')+'</ol>':
+   '<small>No sales</small>')+'</section>';
+ });
+ return card('Top 10 items','<div class="top-columns">'+columns.join('')+'</div>');
+}
+function reviewNotes(s){
+ return (s.unlisted?row('Added item',s.unlisted[0]+' · '+s.unlisted[1]+' × '+fmt(s.unlisted[2])):'')+
+ (s.priceChange?row('Changed price',s.priceChange.name+' · '+fmt(s.priceChange.old)+' → '+fmt(s.priceChange.charged)+' · '+s.priceChange.reason):'');
+}
+let transactionBranch='';
+function transactions(list){
+ const branchControl=branch==='Both branches'?'<label>Branch <select id="transaction-branch">'+
+ [['','Both branches'],...locations.map(site=>[site,site])].map(([value,label])=>
+ '<option value="'+value+'"'+(transactionBranch===value?' selected':'')+'>'+label+'</option>').join('')+'</select></label>':'';
+ if(branch==='Both branches'&&transactionBranch)list=list.filter(s=>s.branch===transactionBranch);
+ const cashiers=[...new Set(list.map(s=>s.branch+'|'+s.cashier))];
+ if(!cashiers.includes(cashierFilter))cashierFilter='';
+ const options=cashiers.map(key=>{
+  const [site,name]=key.split('|');
+  return '<option value="'+key+'"'+(key===cashierFilter?' selected':'')+'>'+name+(branch==='Both branches'?' · '+site:'')+'</option>';
+ }).join('');
+ const matches=list.filter(s=>(!cashierFilter||s.branch+'|'+s.cashier===cashierFilter)&&
+  (paymentFilter==='All'||(paymentFilter==='Review'?(s.discount>0||s.unlisted||s.priceChange):paymentFilter==='Discounts'?s.discount>0:s.payment===paymentFilter)));
+ return '<h1>Transactions</h1><div class="transaction-controls">'+branchControl+'<label>Cashier <select id="report-cashier"><option value="">All cashiers</option>'+options+'</select></label>'+
+  '<div class="filters">'+buttons(['All','Cash','GCash','Discounts','Review'],paymentFilter,'payment')+'</div><small>'+matches.length+' matching · '+fmt(sum(matches,total))+'</small></div>'+
+  (matches.map(s=>'<article class="card transaction-entry"><strong>'+s.branch+' #'+s.number+' · '+s.payment+' · '+fmt(total(s))+'</strong>'+
+  '<small>'+s.time+' · '+s.cashier+'</small>'+
+  s.items.map(([name,qty,price])=>row(name+' · '+qty+' × '+fmt(price),fmt(qty*price))).join('')+
+  row('Discount',fmt(s.discount))+(paymentFilter==='Review'?'<div class="review-notes">'+reviewNotes(s)+'</div>':'')+row('Total paid',fmt(total(s)))+'</article>').join('')||'<p>No matching transactions.</p>');
+}
+const today='2026-11-13';
+const ago=n=>new Date(Date.parse(today)-n*86400000).toISOString().slice(0,10);
+sales.forEach(s=>s.date=today);
+for(const [d,i] of [[1,0],[1,3],[2,1],[4,4],[6,2],[9,3],[15,0],[22,4]])sales.push({...sales[i],date:ago(d)});
+const originalSampleSales=sales.slice();
+let selected=today, range='7 days', itemSort='By Qty';
+function itemPeriodStart(){
+ const days={Today:1,'7 days':7,'28 days':28}[range];
+ if(days)return ago(days-1);
+ const date=new Date(Date.parse(today));
+ const dayOfMonth=date.getUTCDate();
+ date.setUTCDate(1);
+ date.setUTCMonth(date.getUTCMonth()-(range==='6 months'?6:12));
+ const lastDay=new Date(Date.UTC(date.getUTCFullYear(),date.getUTCMonth()+1,0)).getUTCDate();
+ date.setUTCDate(Math.min(dayOfMonth,lastDay));
+ return date.toISOString().slice(0,10);
+}
+function ranking(list){
+ const start=itemPeriodStart(), ranks=new Map();
+ for(const sale of list.filter(s=>s.date>=start&&s.date<=today)){
+  for(const [name,qty,price] of sale.items){
+   const item=ranks.get(name)||{qty:0,amount:0};
+   item.qty+=qty;
+   item.amount+=qty*price;
+   ranks.set(name,item);
+  }
+ }
+ const key=itemSort==='By Qty'?'qty':'amount'; const top=[...ranks].sort(([a,x],[b,y])=>y[key]-x[key]||a.localeCompare(b)).slice(0,50);
+ return '<div class="filters">'+buttons(['Today','7 days','28 days','6 months','1 year'],range,'range')+'</div>'+
+  '<div class="filters">'+buttons(['By Qty','By Amount'],itemSort,'item-sort')+'</div>'+ '<small>Amount before discounts</small>'+
+  card('Top 50 items · '+range,top.length?'<div class="item-list-heading"><span>Item</span><span>Qty</span><span>Amount</span></div><ol class="today-top item-ranking">'+top.map(([name,item])=>
+    '<li><span>'+name+'</span><strong>'+item.qty+'</strong><strong>'+fmt(item.amount)+'</strong></li>').join('')+'</ol>':'<p>No items sold in this period.</p>');
+}
+function history(list){
+ return card('Sales by day',[...new Set(list.map(s=>s.date))].sort().reverse().map(d=>{
+  const orders=list.filter(s=>s.date===d);
+  return '<button class="history-day row" data-kind="date" data-value="'+d+'"><span>'+d+' · '+orders.length+' sales</span><strong>'+fmt(sum(orders,total))+'</strong></button>';
+ }).join(''));
+}
+function hourlySales(list){
+ const hours=new Map();
+ for(const sale of list){
+  const match=/^(\d{1,2}):\d{2} (AM|PM)$/.exec(sale.time);
+  if(!match)continue;
+  const hour=Number(match[1])%12+(match[2]==='PM'?12:0);
+  hours.set(hour,(hours.get(hour)||0)+total(sale));
+ }
+ if(!hours.size)return card('Sales by hour','<small>No hourly sales for this date.</small>');
+ const busiest=[...hours].sort(([a,x],[b,y])=>y-x||a-b);
+ const peak=busiest[0][1];
+ const label=h=>(h%12||12)+(h<12?' AM':' PM');
+ const compact=new Intl.NumberFormat('en-PH',{notation:'compact',maximumFractionDigits:1});
+ const short=h=>(h%12||12)+(h<12?'a':'p');
+ const first=Math.min(6,...hours.keys()), last=Math.max(22,...hours.keys());
+ const peakHours=busiest.filter(([,amount])=>amount===peak).map(([hour])=>label(hour));
+ const bars=Array.from({length:last-first+1},(_,i)=>{
+  const hour=first+i, amount=hours.get(hour)||0;
+  return '<div class="hour-column" title="'+label(hour)+' · '+fmt(amount)+'"><div class="hour-bar-space">'+
+    (amount?'<small>₱'+compact.format(amount)+'</small>':'')+
+    '<i class="'+(amount&&amount===peak?'peak-bar':'')+'" style="height:'+Math.max(2,peak?amount/peak*62:0)+'px"></i></div><span>'+short(hour)+'</span></div>';
+ }).join('');
+ return '<section class="card hourly-card"><div class="hour-heading"><h2>Sales by Hour</h2><small>Peak · '+peakHours.join(', ')+'</small></div>'+
+  '<div class="hour-body"><div class="hour-chart" aria-label="Hourly sales">'+bars+'</div>'+
+  '<h3>Busiest hours</h3><div class="busiest-hours">'+busiest.slice(0,3).map(([hour,amount])=>
+    '<div><strong>'+label(hour)+'</strong><small>'+fmt(amount)+'</small></div>').join('')+'</div></div></section>';
+}
+function periodList(list,weekly){
+ const groups=new Map();
+ for(const sale of list){
+  const date=new Date(Date.parse(sale.date));
+  if(weekly)date.setUTCDate(date.getUTCDate()-((date.getUTCDay()+6)%7));
+  const key=date.toISOString().slice(0,weekly?10:7);
+  if(!groups.has(key))groups.set(key,[]);
+  groups.get(key).push(sale);
+ }
+ return card(weekly?'Sales by Week':'Sales by Month',[...groups].sort(([a],[b])=>b.localeCompare(a)).map(([key,orders])=>{
+  const label=weekly?'Week of '+key:new Intl.DateTimeFormat('en',{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(key+'-01T00:00:00Z'));
+  const paid=method=>fmt(sum(orders.filter(s=>s.payment===method),total));
+  const dates=[...new Set(orders.map(s=>s.date))].sort();
+  return '<details><summary>'+label+' · '+orders.length+' sales · '+fmt(sum(orders,total))+'</summary>'+
+    row('Cash',paid('Cash'))+row('GCash',paid('GCash'))+
+    dates.map(date=>row(date,fmt(sum(orders.filter(s=>s.date===date),total)))).join('')+'</details>';
+ }).join('')||'<p>No sales yet.</p>');
+}
+function datedTrend(list,days){
+ const values=Array.from({length:days},(_,i)=>{
+  const date=ago(days-1-i);
+  return {date,value:sum(list.filter(s=>s.date===date),total)};
+ });
+ const max=Math.max(1,...values.map(d=>d.value));
+ return card('Last '+days+' days','<div class="chart" aria-label="Daily sales">'+values.map(d=>'<div title="'+d.date+' · '+fmt(d.value)+'"><i style="height:'+Math.max(2,d.value/max*80)+'px"></i></div>').join('')+'</div>'+
+ row('Total sales',fmt(sum(values,d=>d.value)))+row('Daily average',fmt(sum(values,d=>d.value)/days)));
+}
+function insights(list){
+ const products=new Map(), pairs=new Map(), baskets=new Map();
+ for(const sale of list.filter(s=>s.date>=ago(27)&&s.date<=today)){
+  for(const [name,qty] of sale.items){
+   const item=products.get(name)||{recent:0,previous:0,older:0,days:new Set()};
+   if(sale.date>=ago(6))item.recent+=qty;
+   else if(sale.date>=ago(13))item.previous+=qty;
+   else item.older+=qty;
+   item.days.add(sale.date);
+   products.set(name,item);
+  }
+  const names=[...new Set(sale.items.map(([name])=>name))].sort();
+  names.forEach(name=>baskets.set(name,(baskets.get(name)||0)+1));
+  names.forEach((first,i)=>names.slice(i+1).forEach(second=>{
+   const key=JSON.stringify([first,second]);
+   pairs.set(key,(pairs.get(key)||0)+1);
+  }));
+ }
+ const fast=[...products].filter(([,i])=>i.recent>0).sort(([a,x],[b,y])=>y.recent-x.recent||a.localeCompare(b)).slice(0,5);
+ const fastNames=new Set(fast.map(([name])=>name));
+ const slow=[...products].filter(([name,i])=>!fastNames.has(name)&&i.recent<i.previous+i.older/2)
+  .sort(([a,x],[b,y])=>x.recent-y.recent||y.previous+y.older/2-x.previous-x.older/2||a.localeCompare(b)).slice(0,5);
+ const together=[...pairs].filter(([,n])=>n>=2).sort(([a,x],[b,y])=>y-x||a.localeCompare(b)).slice(0,5);
+ const movement=([name,i])=>row(name,i.recent+' units')+'<small>Previous 7 days · '+i.previous+' units · Sold on '+i.days.size+' of 28 days</small>';
+ return '<p class="muted">Based on sales received for '+branch+'. Check shelf stock before changing your order.</p>'+
+  card('Check stock first','<p class="muted">Check stock for these fast movers first.</p>'+(fast.map(movement).join('')||'<p>No sales in the latest 7 days.</p>'))+
+  card('Check slow movers','<p class="muted">Check availability before reordering less.</p>'+(slow.map(movement).join('')||'<p>No clear slowdown outside the fast movers.</p>'))+
+  card('Try these pairs','<p class="muted">Try placing these items near each other.</p>'+(together.map(([key,n])=>{
+   const [first,second]=JSON.parse(key);
+   return row(first+' + '+second,n+' baskets')+'<small>'+n+' of '+baskets.get(first)+' baskets with '+first+' also included '+second+'</small>';
+  }).join('')||'<p>No pair appeared in two or more baskets in the last 28 days.</p>'));
+}
+let pastedProducts='', importBranch='Both branches', importResult=null;
+const safeText=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function importPreview(text){
+ const rows=text.trim().split(/\r?\n/).map(line=>line.split('\t').map(cell=>cell.trim()));
+ const header=rows.shift().map(h=>h.toLowerCase());
+ const column=(...names)=>header.findIndex(h=>names.includes(h));
+ const indices=[column('item no.','item no'),column('product name','description'),column('size / pack'),column('selling price','srp'),column('search alias'),column('expiration date')];
+ if(indices[1]<0||indices[3]<0)return {error:'Include the header row with Product Name and Selling Price.'};
+ const items=rows.filter(r=>r.some(Boolean)).map(r=>indices.map(i=>r[i]||''));
+ const counts=new Map();
+ for(const [id] of items)if(id)counts.set(id.toLowerCase(),(counts.get(id.toLowerCase())||0)+1);
+ const names=new Map();
+ for(const [,name,pack] of items){const key=(name+' '+pack).trim().toLowerCase().replace(/\s+/g,' ');names.set(key,(names.get(key)||0)+1);}
+ return {items:items.map(([id,name,pack,price,alias,expiry])=>{
+  const amount=price.replace(/[₱,\s]/g,'');
+  const issue=!name?'Missing product name':!/^\d+(\.\d{1,2})?$/.test(amount)||!Number.isFinite(Number(amount))||Number(amount)<=0?'Check selling price':
+   id&&counts.get(id.toLowerCase())>1?'Duplicate item number':names.get((name+' '+pack).trim().toLowerCase().replace(/\s+/g,' '))>1?'Duplicate product and pack':'';
+  return {id,name,pack,price:amount,alias,expiry,issue};
+ })};
+}
+let productMode='Search & edit', productQuery='', productIndex=-1, productNotice='';
+const previewCatalog=[...new Map(sales.flatMap(s=>s.items).map(([name,,price])=>[name,{name,pack:'',alias:'',prices:{Porta:price,'Center Mall':price}}])).values()];
+const productBranches=()=>['Both branches',...locations].map(site=>'<option>'+site+'</option>').join('');
+const productName=p=>[p.name,p.pack].filter(Boolean).join(' · ');
+function productResults(){
+ const terms=productQuery.trim().toLowerCase().split(/\s+/);
+ return previewCatalog.map((product,index)=>({product,index})).filter(({product})=>
+   terms.every(term=>(productName(product)+' '+product.alias).toLowerCase().includes(term))).slice(0,30).map(({product,index})=>
+   '<button class="product-result" data-kind="edit-product" data-value="'+index+'"><strong>'+safeText(productName(product))+'</strong><small>'+
+   locations.map(site=>site+' '+(product.prices[site]==null?'—':fmt(product.prices[site]))).join(' · ')+'</small></button>').join('')||'<p>No products match.</p>';
+}
+function productEditor(){
+ const product=previewCatalog[productIndex];
+ return productMode==='Search & edit'&&!product?'':card(product?'Change price · '+safeText(productName(product)):'Add one item',
+  '<form id="product-editor">'+(product?'<p>'+locations.map(site=>site+' '+(product.prices[site]==null?'—':fmt(product.prices[site]))).join(' · ')+'</p>':
+  '<label>Product name<input name="name" required maxlength="150"></label><label>Size / Pack<input name="pack" maxlength="60"></label><label>Search alias<input name="alias" maxlength="60"></label>')+
+  '<label>Selling price<input name="price" type="number" min="0.01" max="999999.99" step="0.01" required></label>'+
+  '<label>Apply to<select name="site">'+productBranches()+'</select></label><button>Save in preview</button></form>');
+}
+function previewResetControls(){
+ return '<details><summary>Reset preview sales</summary><p>'+sales.length+' sample transactions in this session. The product catalog stays in place.</p>'+
+ '<div class="filters"><button data-kind="clear-preview"'+(sales.length?'':' disabled')+'>Clear sample sales</button>'+
+ '<button data-kind="restore-preview"'+(sales.length?' disabled':'')+'>Restore sample sales</button></div></details>';
+}
+function products(){
+ const modes='<h1>Products</h1><div class="filters">'+buttons(['Search & edit','Add item','Bulk Import'],productMode,'product-mode')+'</div>'+previewResetControls()+
+  (productNotice?'<p role="status">'+safeText(productNotice)+'</p>':'');
+ if(productMode!=='Bulk Import')return modes+(productMode==='Search & edit'?
+  card('Search products','<label>Product name <input id="product-search" type="search" value="'+safeText(productQuery)+'"></label><div id="product-results">'+productResults()+'</div>'):'')+
+  productEditor()+'<p class="muted">Sample catalog. Changes apply only to this preview session.</p>';
+ return modes+bulkImport();
+}
+function bulkImport(){
+ const result=importResult;
+ return card('Bulk Import','<p>Copy the header and filled rows from Excel, then paste them here.</p>'+
+ '<a href="Melted-Product-Import.xlsx" download>Download Excel template</a>'+
+ '<form id="bulk-import"><label>Branch <select id="import-branch">'+['Both branches',...locations].map(name=>'<option'+(name===importBranch?' selected':'')+'>'+name+'</option>').join('')+
+ '</select></label><label>Excel rows<textarea id="import-rows" rows="7" required>'+safeText(pastedProducts)+'</textarea></label><button>Preview import</button></form>'+
+ (!result?'':result.error?'<p role="alert">'+result.error+'</p>':
+ '<p>'+result.items.length+' rows for '+importBranch+' · '+result.items.filter(i=>i.issue).length+' need review</p>'+
+ result.items.map(i=>'<div class="order-line"><strong>'+safeText(i.name||'Unnamed item')+'</strong> · '+safeText(i.pack)+' · '+safeText(i.price)+
+ '<div><small>'+safeText([i.id,i.alias,i.expiry].filter(Boolean).join(' · '))+'</small></div><small>'+safeText(i.issue||(i.id?'Check item number against live catalog':'New item candidate'))+'</small></div>').join(''))+
+ '<p class="muted">Preview only. Publishing will be available when the shared catalog is connected.</p>');
+}
+document.addEventListener('submit',event=>{
+ if(event.target.id==='product-editor'){
+  event.preventDefault();
+  const values=Object.fromEntries(new FormData(event.target));
+  const price=Number(values.price);
+  if(!Number.isFinite(price)||price<=0||!['Both branches',...locations].includes(values.site))return;
+  let product=previewCatalog[productIndex];
+  if(!product){
+   const name=values.name.trim(),pack=values.pack.trim();
+   if(!name)return;
+   const normalize=text=>text.toLowerCase().replace(/\s+/g,' ').trim();
+   if(previewCatalog.some(p=>normalize(p.name)===normalize(name)&&normalize(p.pack)===normalize(pack))){
+    productNotice='This product and pack already exist. Use Search & edit to change the price.';render();return;
+   }
+   product={name,pack,alias:values.alias.trim(),prices:{}};
+   previewCatalog.push(product);
+  }
+  for(const site of values.site==='Both branches'?locations:[values.site])product.prices[site]=price;
+  productNotice=productName(product)+' · '+fmt(price)+' · '+values.site+' · Saved in preview';
+  productMode='Search & edit';productQuery=product.name;productIndex=-1;render();return;
+ }
+ if(event.target.id!=='bulk-import')return;
+ event.preventDefault();
+ pastedProducts=document.querySelector('#import-rows').value;
+ importBranch=document.querySelector('#import-branch').value;
+ importResult=importPreview(pastedProducts);
+ render();
+});
+function render(){
+ const list=sales.filter(s=>branch==='Both branches'||s.branch===branch);
+ const daily=list.filter(s=>s.date===selected);
+ document.querySelector('#branches').innerHTML=buttons(['Both branches',...locations],branch,'branch');
+ document.querySelector('#tabs').innerHTML=buttons(['Today','Week','Month','Items','History','Insights','Products'],tab,'tab');
+ const controls='<div class="date-row"><label>Date <input id="report-date" type="date" value="'+selected+'"></label><button data-kind="date" data-value="'+today+'">Today</button></div>';
+ const reports={Today:()=>controls+overview(daily)+(branch==='Both branches'?todayTopItems(sales.filter(s=>s.date===selected)):hourlySales(daily))+transactions(daily),Week:()=>datedTrend(list,7)+periodList(list,true),Month:()=>datedTrend(list,30)+periodList(list,false),Items:()=>ranking(list),History:()=>history(list),Insights:()=>insights(list),Products:()=>products()};
+ document.querySelector('#report').innerHTML=reports[tab]();
+}
+document.addEventListener('input',event=>{
+ if(event.target.id==='product-search'){
+  productQuery=event.target.value;
+  document.querySelector('#product-results').innerHTML=productResults();
+ }
+});
+document.addEventListener('change',event=>{
+ if(event.target.id==='transaction-branch'){transactionBranch=event.target.value;render();}
+ if(event.target.id==='report-cashier'){cashierFilter=event.target.value;render();}
+ if(event.target.id==='report-date'&&event.target.value){selected=event.target.value;render();}
+});
+
+document.addEventListener('click',event=>{
+ const control=event.target.closest('button[data-kind]');
+ if(!control)return;
+ const {kind,value}=control.dataset;
+ if(kind==='clear-preview'){
+  if(!sales.length||!confirm('Clear '+sales.length+' sample transactions from this preview?'))return;
+  sales.length=0;
+ }
+ if(kind==='restore-preview'&&!sales.length)sales.push(...originalSampleSales);
+ if(kind==='product-mode'){productMode=value;productIndex=-1;productNotice='';}
+ if(kind==='edit-product'){productIndex=Number(value);productNotice='';}
+ if(kind==='branch')branch=value;
+
+ if(kind==='tab')tab=value;
+
+ if(kind==='payment')paymentFilter=value;
+ if(kind==='range')range=value;
+ if(kind==='item-sort')itemSort=value;
+ if(kind==='date'){selected=value;tab='Today';}
+ render();
+});
+render();
+</script>
+</body>
+</html>
