@@ -24,6 +24,7 @@ main{padding:14px 12px 24px}.card,details{border-color:var(--border);border-radi
 </head>
 <body>
 <header><div class="row"><strong>Melted <span>all</span></strong><small>Sample data</small></div></header>
+<section id="owner-login" style="max-width:580px;margin:8px auto;padding:8px 12px"><button id="owner-sign-in" disabled>Sign in with Google</button> <button id="owner-sign-out" hidden>Sign out</button><p id="owner-status" role="status">Loading sign-in…</p></section>
 <div class="navigation"><nav id="tabs" class="filters" aria-label="Report"></nav><nav id="branches" class="filters" aria-label="Branch"></nav></div>
 <main><div id="report"></div>
 </main>
@@ -366,6 +367,28 @@ document.addEventListener('click',event=>{
  render();
 });
 render();
+</script>
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+const config={apiKey:"AIzaSyCK5n0efqLA2koA7tSbS3ZBsAyT4__0UbI",authDomain:"melted-price-logs-pilot.firebaseapp.com",projectId:"melted-price-logs-pilot",appId:"1:137320424133:web:0a5f81e7bee48e4c9d46ac"};
+const auth=getAuth(initializeApp(config));
+const login=document.querySelector('#owner-sign-in');
+const logout=document.querySelector('#owner-sign-out');
+const status=document.querySelector('#owner-status');
+onAuthStateChanged(auth,user=>{
+ login.hidden=Boolean(user);
+ login.disabled=false;
+ logout.hidden=!user;
+ status.textContent=user?'Signed in · '+user.email+' · Sample dashboard':'Sign in to test your owner account. The dashboard shows sample data.';
+},()=>{status.textContent='Could not check sign-in. Reload to retry.';});
+login.addEventListener('click',async()=>{
+ login.disabled=true;
+ try{await signInWithPopup(auth,new GoogleAuthProvider());}
+ catch(error){status.textContent=error.code==='auth/unauthorized-domain'?'Add openworldph-blip.github.io under Firebase Authentication → Settings → Authorized domains.':'Sign-in could not complete ('+(error.code||'unknown error')+').';}
+ finally{login.disabled=false;}
+});
+logout.addEventListener('click',async()=>{try{await signOut(auth);}catch{status.textContent='Could not sign out. Try again.';}});
 </script>
 </body>
 </html>
