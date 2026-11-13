@@ -392,6 +392,7 @@ function render(){
  const controls='<div class="date-row"><label>Date <input id="report-date" type="date" value="'+selected+'"></label><button data-kind="date" data-value="'+today+'">Today</button></div>';
  const reports={Today:()=>controls+overview(daily)+(branch==='Both branches'?todayTopItems(sales.filter(s=>s.date===selected)):hourlySales(daily))+transactions(daily),Items:()=>ranking(list),History:()=>historyReport(list),Insights:()=>insights(list),Products:()=>products()};
  document.querySelector('#report').innerHTML=reports[tab]();
+ if(connectedSales)window.refreshMeltedReport?.(tab,selected,branch,tab==='Items'?itemPeriodStart():tab==='Insights'?ago(27):null,today);
 }
 document.addEventListener('input',event=>{
  if(event.target.id==='product-search'){
@@ -460,9 +461,9 @@ window.setMeltedCloudSales = (records) => {
     priceChange:changed?{name:safeText(changed.name),old:changed.originalPrice/100,charged:changed.price/100,reason:safeText(changed.reason||'')}:null}];
  }).sort((a,b)=>b.at-a.at):originalSampleSales;
  sales.splice(0,sales.length,...rows);
- for(const site of locations){const last=connectedSales?rows.find(s=>s.branch===site):null;sync[site]=connectedSales?(last?last.date+' '+last.time:'No upload yet'):(site==='Porta'?'2:05 PM':'11:48 AM');}
+ for(const site of locations){const last=connectedSales?rows.find(s=>s.branch===site):null;sync[site]=connectedSales?(last?last.date+' '+last.time:'No sales in this view'):(site==='Porta'?'2:05 PM':'11:48 AM');}
  const badge=document.querySelector('header small');
- if(badge)badge.textContent=connectedSales?'Pilot uploads':'Sample data';
+ if(badge&&!connectedSales)badge.textContent='Sample data';
  render();
 };
 render();
@@ -470,7 +471,7 @@ render();
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getDatabase, onValue, ref, update } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+import { getDatabase, onValue, ref, update, query, orderByChild, startAt, endBefore } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
 const config={apiKey:"AIzaSyCK5n0efqLA2koA7tSbS3ZBsAyT4__0UbI",authDomain:"melted-price-logs-pilot.firebaseapp.com",projectId:"melted-price-logs-pilot",appId:"1:137320424133:web:0a5f81e7bee48e4c9d46ac"};
 const app=initializeApp(config);
 const auth=getAuth(app);
@@ -482,19 +483,45 @@ mode.type='button';
 mode.hidden=true;
 mode.textContent='Show test sales';
 document.querySelector('#owner-login').append(mode);
+let reportKey='', generation=0;
 function watchSales(){
- stopSales?.();
+ reportKey='';
  window.setMeltedCloudSales([]);
- document.querySelector('header small').textContent=testMode?'TEST MODE':'Live sales';
- status.textContent='Loading '+(testMode?'test':'live')+' sales…';
- stopSales=onValue(ref(database,testMode?'sales':'liveSales'),snapshot=>{
-  const data=snapshot.val()||{};
-  const rows=[['Porta',data.porta],['Center Mall',data['center-mall']]].flatMap(([branch,sales])=>Object.values(sales||{}).map(sale=>[branch,sale]));
-  window.setMeltedCloudSales(rows);
-  document.querySelector('header small').textContent=testMode?'TEST MODE':'Live sales';
-  status.textContent=rows.length?rows.length+(testMode?' test':' live')+' sales loaded':(testMode?'No test sales yet.':'No live sales yet.');
- },()=>{status.textContent=testMode?'Test sales access denied.':'Live sales access has not been configured.';});
 }
+window.refreshMeltedReport=(tab,date,branch,start,today)=>{
+ if(!ownerActive||tab==='Products')return;
+ const sites=branch==='Both branches'?['Porta','Center Mall']:[branch];
+ const first=tab==='Today'?date:start;
+ const last=tab==='Today'?date:start?today:null;
+ const key=JSON.stringify([testMode,sites,first,last]);
+ if(key===reportKey)return;
+ reportKey=key;
+ stopSales?.();
+ const current=++generation;
+ const unsubscribers=[];
+ stopSales=()=>{for(const unsubscribe of unsubscribers)unsubscribe();};
+ status.textContent='Loading '+(testMode?'test':'live')+' sales…';
+ document.querySelector('header small').textContent=testMode?'TEST MODE':'Live sales';
+ document.querySelector('#report').textContent=status.textContent;
+ const snapshots=new Map();
+ for(const site of sites){
+  const source=ref(database,(testMode?'sales':'liveSales')+'/'+(site==='Porta'?'porta':'center-mall'));
+  const target=first?query(source,orderByChild('at'),startAt(Date.parse(first+'T00:00:00+08:00')),endBefore(Date.parse(last+'T00:00:00+08:00')+86400000)):source;
+  unsubscribers.push(onValue(target,snapshot=>{
+   if(current!==generation)return;
+   snapshots.set(site,Object.values(snapshot.val()||{}).map(sale=>[site,sale]));
+   if(snapshots.size!==sites.length)return;
+   const rows=[...snapshots.values()].flat();
+   window.setMeltedCloudSales(rows);
+   document.querySelector('header small').textContent=testMode?'TEST MODE':'Live sales';
+   status.textContent=rows.length+' '+(testMode?'test':'live')+' sales in this view';
+  },()=>{
+   if(current!==generation)return;
+   status.textContent='Could not load sales. Check Firebase access and reload.';
+   document.querySelector('#report').textContent=status.textContent;
+  }));
+ }
+};
 mode.addEventListener('click',()=>{
  if(!ownerActive)return;
  testMode=!testMode;
@@ -510,6 +537,8 @@ onAuthStateChanged(auth,user=>{
  window.loadMeltedCatalog(null);
  stopSales?.();
  stopSales=undefined;
+ generation++;
+ reportKey='';
  login.hidden=Boolean(user);
  login.disabled=false;
  logout.hidden=!user;
