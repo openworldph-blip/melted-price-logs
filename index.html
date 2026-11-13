@@ -319,7 +319,7 @@ function batchPlan(){
   const key=normalize([item.name,item.pack].filter(Boolean).join(' '));
   const matches=previewCatalog.filter(p=>normalize([p.name,p.pack].filter(Boolean).join(' '))===key);
   const existing=matches[0];
-  const id=existing?.id||(item.id?'excel-'+item.id:'');
+  const id=existing?.id||(item.id?'excel-'+item.id:(item.generatedId??=crypto.randomUUID()));
   if(item.issue||matches.length>1||!/^[a-zA-Z0-9_-]{1,80}$/.test(id)||(!existing&&previewCatalog.some(p=>p.id===id))){blocked++;continue;}
   for(const site of targets){
    if(existing?.prices[site]!=null){kept++;continue;}
@@ -334,14 +334,14 @@ function batchPlan(){
 function bulkImport(){
  const result=importResult;
  const plan=catalogReady&&result?.items?batchPlan():null;
- return card('Bulk Import','<p>Copy the header and filled rows from Excel, then paste them here.</p>'+
+ return card('Bulk Import','<p>Paste the header and filled rows from Excel. Leave Item No. blank for new products.</p>'+
  '<a href="Melted-Product-Import.xlsx" download>Download Excel template</a>'+
  '<form id="bulk-import"><label>Branch <select id="import-branch">'+['Both branches',...locations].map(name=>'<option'+(name===importBranch?' selected':'')+'>'+name+'</option>').join('')+
  '</select></label><label>Excel rows<textarea id="import-rows" rows="7" required>'+safeText(pastedProducts)+'</textarea></label><button>Preview import</button></form>'+
  (!result?'':result.error?'<p role="alert">'+result.error+'</p>':
  '<p>'+result.items.length+' rows for '+importBranch+' · '+result.items.filter(i=>i.issue).length+' need review</p>'+
  result.items.map(i=>'<div class="order-line"><strong>'+safeText(i.name||'Unnamed item')+'</strong> · '+safeText(i.pack)+' · '+safeText(i.price)+
- '<div><small>'+safeText([i.id,i.alias,i.expiry].filter(Boolean).join(' · '))+'</small></div><small>'+safeText(i.issue||(i.id?'Check item number against live catalog':'New item candidate'))+'</small></div>').join(''))+
+ '<div><small>'+safeText([i.id,i.alias,i.expiry].filter(Boolean).join(' · '))+'</small></div><small>'+safeText(i.issue||(i.id?'Check item number against live catalog':'Match by name and pack or assign a new ID'))+'</small></div>').join(''))+
  (plan?'<p>'+plan.added+' branch listings to add · '+plan.kept+' existing prices kept · '+plan.blocked+' rows or conflicts skipped</p>'+
  '<button data-kind="publish-batch" '+(batchBusy||!plan.added?'disabled':'')+'>Publish new listings</button>':'<p class="muted">Sign in as owner to publish.</p>'));
 }
