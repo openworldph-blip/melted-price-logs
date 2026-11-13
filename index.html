@@ -379,13 +379,18 @@ document.addEventListener('submit',async event=>{
  importResult=importPreview(pastedProducts);
  render();
 });
+let historyPeriod='Daily';
+function historyReport(list){
+ const views={Daily:()=>history(list),Weekly:()=>datedTrend(list,7)+periodList(list,true),Monthly:()=>datedTrend(list,30)+periodList(list,false),Yearly:()=>periodList(list,'year')};
+ return '<div class="filters" aria-label="History period">'+buttons(Object.keys(views),historyPeriod,'history-period')+'</div>'+views[historyPeriod]();
+}
 function render(){
  const list=sales.filter(s=>branch==='Both branches'||s.branch===branch);
  const daily=list.filter(s=>s.date===selected);
  document.querySelector('#branches').innerHTML=buttons(['Both branches',...locations],branch,'branch');
- document.querySelector('#tabs').innerHTML=buttons(['Today','Week','Month','Items','History','Insights','Products'],tab,'tab');
+ document.querySelector('#tabs').innerHTML=buttons(['Today','Items','History','Insights','Products'],tab,'tab');
  const controls='<div class="date-row"><label>Date <input id="report-date" type="date" value="'+selected+'"></label><button data-kind="date" data-value="'+today+'">Today</button></div>';
- const reports={Today:()=>controls+overview(daily)+(branch==='Both branches'?todayTopItems(sales.filter(s=>s.date===selected)):hourlySales(daily))+transactions(daily),Week:()=>datedTrend(list,7)+periodList(list,true),Month:()=>datedTrend(list,30)+periodList(list,false),Items:()=>ranking(list),History:()=>periodList(list,'year')+history(list),Insights:()=>insights(list),Products:()=>products()};
+ const reports={Today:()=>controls+overview(daily)+(branch==='Both branches'?todayTopItems(sales.filter(s=>s.date===selected)):hourlySales(daily))+transactions(daily),Items:()=>ranking(list),History:()=>historyReport(list),Insights:()=>insights(list),Products:()=>products()};
  document.querySelector('#report').innerHTML=reports[tab]();
 }
 document.addEventListener('input',event=>{
@@ -430,6 +435,7 @@ document.addEventListener('click',async event=>{
  if(kind==='branch')branch=value;
 
  if(kind==='tab')tab=value;
+ if(kind==='history-period')historyPeriod=value;
 
  if(kind==='payment')paymentFilter=value;
  if(kind==='range')range=value;
