@@ -66,7 +66,7 @@ const money=new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'});
 const fmt=value=>money.format(value);
 const sum=(list,read)=>list.reduce((total,item)=>total+read(item),0);
 const orderCount=list=>sum(list,s=>s.orderCount??1);
-const total=sale=>sum(sale.items,item=>item[1]*item[2])-sale.discount;
+const total=sale=>sale.voided?0:sum(sale.items,item=>item[1]*item[2])-sale.discount;
 const row=(label,value)=>'<div class="row order-line"><span>'+label+'</span><strong>'+value+'</strong></div>';
 const card=(title,body)=>'<section class="card"><h2>'+title+'</h2>'+body+'</section>';
 let branch='Both branches';
@@ -123,8 +123,8 @@ function transactions(list){
   (paymentFilter==='All'||(paymentFilter==='Review'?(s.discount>0||s.unlisted||s.priceChange):paymentFilter==='Discounts'?s.discount>0:s.payment===paymentFilter)));
  return '<h1>Transactions</h1><div class="transaction-controls">'+branchControl+'<label>Cashier <select id="report-cashier"><option value="">All cashiers</option>'+options+'</select></label>'+
   '<div class="filters">'+buttons(['All','Cash','GCash','Discounts','Review'],paymentFilter,'payment')+'</div><small>'+matches.length+' matching · '+fmt(sum(matches,total))+'</small></div>'+
-  (matches.map(s=>'<article class="card transaction-entry"><strong>'+s.branch+' #'+s.number+' · '+s.payment+' · '+fmt(total(s))+'</strong>'+
-  '<small>'+s.time+' · '+s.cashier+'</small>'+
+  (matches.map(s=>'<article class="card transaction-entry"><strong>'+s.branch+' #'+s.number+' · '+(s.voided?'Voided':s.payment+' · '+fmt(total(s)))+'</strong>'+
+  (s.voided?row('Reason',s.voidReason):'')+'<small>'+s.time+' · '+s.cashier+'</small>'+
   s.items.map(([name,qty,price])=>row(name+' · '+qty+' × '+fmt(price),fmt(qty*price))).join('')+
   row('Discount',fmt(s.discount))+(paymentFilter==='Review'?'<div class="review-notes">'+reviewNotes(s)+'</div>':'')+row('Total paid',fmt(total(s)))+'</article>').join('')||'<p>No matching transactions.</p>');
 }
@@ -445,12 +445,13 @@ function historyReport(list){
 }
 function render(){
  document.querySelector('#header-date').textContent=new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',weekday:'short',month:'short',day:'numeric',year:'numeric'}).format(new Date());
- const list=sales.filter(s=>branch==='Both branches'||s.branch===branch);
+ const branchSales=sales.filter(s=>branch==='Both branches'||s.branch===branch);
+ const list=branchSales.filter(s=>!s.voided);
  const daily=list.filter(s=>s.date===selected);
  document.querySelector('#branches').innerHTML=buttons(['Both branches',...locations],branch,'branch');
  document.querySelector('#tabs').innerHTML=buttons(['Today','Items','History','Insights','Products'],tab,'tab');
  const controls='<div class="date-row"><label>Date <input id="report-date" type="date" value="'+selected+'"></label><button data-kind="date" data-value="'+today+'">Today</button></div>';
- const reports={Today:()=>controls+overview(daily)+(branch==='Both branches'?todayTopItems(sales.filter(s=>s.date===selected)):hourlySales(daily))+transactions(daily),Items:()=>ranking(list),History:()=>historyReport(list),Insights:()=>insights(list),Products:()=>products()};
+ const reports={Today:()=>controls+overview(daily)+(branch==='Both branches'?todayTopItems(sales.filter(s=>!s.voided&&s.date===selected)):hourlySales(daily))+transactions(branchSales.filter(s=>s.date===selected)),Items:()=>ranking(list),History:()=>historyReport(list),Insights:()=>insights(list),Products:()=>products()};
  document.querySelector('#report').innerHTML=reports[tab]();
  if(connectedSales)window.refreshMeltedReport?.(tab,selected,branch,tab==='Items'?itemPeriodStart():tab==='Insights'?ago(27):null,today);
 }
@@ -533,11 +534,15 @@ window.setMeltedCloudSales = (records) => {
  if(wasConnected!==connectedSales)selected=today;
  const rows=connectedSales?records.flatMap(([branch,entry])=>{
   if(entry?.dailySummary)return [{...entry,branch}];
-  if(!entry||entry.void||!Array.isArray(entry.items)||!Number.isFinite(entry.at)||Math.abs(entry.at)>8.64e15)return [];
+  const corrections=Object.entries(entry?.corrections||{}).sort(([a],[b])=>Number(a)-Number(b)).map(([,change])=>change);
+    const latest=corrections.at(-1);
+    const voided=latest?.action==='Void';
+    if(latest?.action==='Cash'||latest?.action==='GCash')entry={...entry,method:latest.action};
+    if(!entry||entry.void||!Array.isArray(entry.items)||!Number.isFinite(entry.at)||Math.abs(entry.at)>8.64e15)return [];
   const items=entry.items.filter(i=>i&&Number.isFinite(i.qty)&&Number.isFinite(i.price)).map(i=>[safeText(i.name),i.qty,i.price/100]);
   const added=entry.items.find(i=>i&&i.id===null&&Number.isFinite(i.qty)&&Number.isFinite(i.price));
   const changed=entry.items.find(i=>i&&Number.isFinite(i.originalPrice)&&Number.isFinite(i.price));
-  return [{branch,date:dateOf(entry.at),number:safeText(String(entry.dailyNumber||entry.number||'').padStart(3,'0')),time:new Date(entry.at).toLocaleTimeString('en-US',{timeZone:'Asia/Manila',hour:'numeric',minute:'2-digit'}),cashier:safeText(String(entry.cashier||'Unknown').replaceAll('|',' ')),payment:entry.method==='GCash'?'GCash':'Cash',discount:Number.isFinite(entry.discount)?entry.discount/100:0,items,at:entry.at,
+  return [{branch,date:dateOf(entry.at),number:safeText(String(entry.dailyNumber||entry.number||'').padStart(3,'0')),time:new Date(entry.at).toLocaleTimeString('en-US',{timeZone:'Asia/Manila',hour:'numeric',minute:'2-digit'}),cashier:safeText(String(entry.cashier||'Unknown').replaceAll('|',' ')),payment:entry.method==='GCash'?'GCash':'Cash',discount:Number.isFinite(entry.discount)?entry.discount/100:0,items,at:entry.at,voided,voidReason:voided?safeText(latest.reason||''):'',
     unlisted:added?[safeText(added.name),added.qty,added.price/100]:null,
     priceChange:changed?{name:safeText(changed.name),old:changed.originalPrice/100,charged:changed.price/100,reason:safeText(changed.reason||'')}:null}];
  }).sort((a,b)=>b.at-a.at):originalSampleSales;
@@ -640,7 +645,7 @@ onAuthStateChanged(auth,user=>{
  login.disabled=false;
  logout.hidden=!user;
  document.querySelector('#owner-menu').hidden=!user;
- ownerActive=['SefNfee1nKURnXcOMrzRuxYihVI3','Bq6tVPEnaBbPtvpGbBc7lnQRPap2'].includes(user?.uid);
+ ownerActive=['SefNfee1nKURnXcOMrzRuxYihVI3','Bq6tVPEnaBbPtvpGbBc7lnQRPap2','qYAyxpzSLHcB15ATcMyg16u6Ott1'].includes(user?.uid);
  mode.hidden=!ownerActive;
  testMode=false;
  mode.textContent='Show test sales';
