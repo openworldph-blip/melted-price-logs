@@ -324,9 +324,9 @@ function previewResetControls(){
 function products(){
  const modes='<h1>Products</h1><div class="filters">'+buttons(['Search & edit','Add item','Bulk Import'],productMode,'product-mode')+'</div>'+previewResetControls()+
   (productNotice?'<p role="status">'+safeText(productNotice)+'</p>':'');
- if(productMode!=='Bulk Import')return modes+(productMode==='Search & edit'?
+ if(productMode!=='Bulk Import')return modes+(productMode==='Search & edit'&&productIndex<0?
   card('Search products','<label>Product name <input id="product-search" type="search" value="'+safeText(productQuery)+'"></label><div id="product-results">'+productResults()+'</div>'):'')+
-  productEditor()+'<p class="muted">Pilot catalog. Branch phones apply published updates on their next product download.</p>';
+  (productMode==='Search & edit'&&productIndex>=0?'<button data-kind="product-back">‹ Back to results</button>':'')+productEditor()+'<p class="muted">Pilot catalog. Branch phones apply published updates on their next product download.</p>';
  return modes+bulkImport();
 }
 let batchBusy=false;
@@ -456,6 +456,7 @@ document.addEventListener('click',async event=>{
  }
  if(kind==='restore-preview'&&!connectedSales&&!sales.length)sales.push(...originalSampleSales);
  if(kind==='product-mode'){productMode=value;productIndex=-1;productNotice='';}
+ if(kind==='product-back'){productIndex=-1;productNotice='';}
  if(kind==='edit-product'){productIndex=Number(value);productNotice='';}
  if(kind==='branch')branch=value;
 
@@ -467,6 +468,7 @@ document.addEventListener('click',async event=>{
  if(kind==='item-sort')itemSort=value;
  if(kind==='date'){selected=value;tab='Today';}
  render();
+ if(kind==='edit-product'||kind==='product-back')document.querySelector('#report').scrollIntoView({block:'start'});
 });
 window.setMeltedCloudSales = (records) => {
  const wasConnected=connectedSales;
