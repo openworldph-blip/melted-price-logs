@@ -47,6 +47,7 @@ const sync={'Porta':'2:05 PM','Center Mall':'11:48 AM'};
 const money=new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'});
 const fmt=value=>money.format(value);
 const sum=(list,read)=>list.reduce((total,item)=>total+read(item),0);
+const orderCount=list=>sum(list,s=>s.orderCount??1);
 const total=sale=>sum(sale.items,item=>item[1]*item[2])-sale.discount;
 const row=(label,value)=>'<div class="row order-line"><span>'+label+'</span><strong>'+value+'</strong></div>';
 const card=(title,body)=>'<section class="card"><h2>'+title+'</h2>'+body+'</section>';
@@ -147,7 +148,7 @@ function history(list){
  const days=new Map();
  for(const sale of list){
   const day=days.get(sale.date)||{count:0,amount:0};
-  day.count++;
+  day.count+=sale.orderCount??1;
   day.amount+=total(sale);
   days.set(sale.date,day);
  }
@@ -197,7 +198,7 @@ function periodList(list,period){
   const label=weekly?'Wk '+key:yearly?key:monthLabel(key);
   const paid=method=>fmt(sum(orders.filter(s=>s.payment===method),total));
   const dates=[...new Set(orders.map(s=>yearly?s.date.slice(0,7):s.date))].sort();
-  return '<details class="period-detail"><summary><span>'+label+'</span><small>'+orders.length+' sales</small><strong>'+fmt(sum(orders,total))+'</strong></summary>'+
+  return '<details class="period-detail"><summary><span>'+label+'</span><small>'+orderCount(orders)+' sales</small><strong>'+fmt(sum(orders,total))+'</strong></summary>'+
     row('Cash',paid('Cash'))+row('GCash',paid('GCash'))+
     dates.map(date=>row(yearly?monthLabel(date):date,fmt(sum(orders.filter(s=>s.date.startsWith(date)),total)))).join('')+'</details>';
  }).join('')||'<p>No sales yet.</p>');
@@ -458,6 +459,7 @@ window.setMeltedCloudSales = (records) => {
  today=connectedSales?dateOf(Date.now()):sampleDay;
  if(wasConnected!==connectedSales)selected=today;
  const rows=connectedSales?records.flatMap(([branch,entry])=>{
+  if(entry?.dailySummary)return [{...entry,branch}];
   if(!entry||entry.void||!Array.isArray(entry.items)||!Number.isFinite(entry.at)||Math.abs(entry.at)>8.64e15)return [];
   const items=entry.items.filter(i=>i&&Number.isFinite(i.qty)&&Number.isFinite(i.price)).map(i=>[safeText(i.name),i.qty,i.price/100]);
   const added=entry.items.find(i=>i&&i.id===null&&Number.isFinite(i.qty)&&Number.isFinite(i.price));
@@ -477,7 +479,7 @@ render();
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getDatabase, onValue, ref, update, query, orderByChild, startAt, endBefore } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+import { getDatabase, onValue, ref, update, query, orderByChild, startAt, endBefore, get } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
 const config={apiKey:"AIzaSyCK5n0efqLA2koA7tSbS3ZBsAyT4__0UbI",authDomain:"melted-price-logs-pilot.firebaseapp.com",projectId:"melted-price-logs-pilot",appId:"1:137320424133:web:0a5f81e7bee48e4c9d46ac"};
 const app=initializeApp(config);
 const auth=getAuth(app);
@@ -499,7 +501,7 @@ window.refreshMeltedReport=(tab,date,branch,start,today)=>{
  const sites=branch==='Both branches'?['Porta','Center Mall']:[branch];
  const first=tab==='Today'?date:start;
  const last=tab==='Today'?date:start?today:null;
- const key=JSON.stringify([testMode,sites,first,last]);
+ const key=JSON.stringify([testMode,sites,first,last,tab==='History']);
  if(key===reportKey)return;
  reportKey=key;
  stopSales?.();
@@ -511,21 +513,37 @@ window.refreshMeltedReport=(tab,date,branch,start,today)=>{
  document.querySelector('#report').textContent=status.textContent;
  const snapshots=new Map();
  for(const site of sites){
+  const slug=site==='Porta'?'porta':'center-mall';
+  if(tab==='History'&&!testMode){
+   get(ref(database,'liveSales/_daily/'+slug)).then(snapshot=>{
+    if(current!==generation)return;
+    const summary=snapshot.val();
+    const rows=Object.entries(summary?.days||{}).flatMap(([date,d])=>
+     [['Cash',d.cash],['GCash',d.gcash],['Unknown',d.total-d.cash-d.gcash]].map(([payment,cents],i)=>
+      [site,{dailySummary:true,date,at:Date.parse(date+'T00:00:00+08:00'),payment,items:[['',1,cents/100]],discount:0,orderCount:i===0?d.count:0}]));
+    const tail=ref(database,'liveSales/'+slug);
+    const target=summary?.through?query(tail,orderByChild('at'),startAt(Date.parse(summary.through+'T00:00:00+08:00')+86400000)):tail;
+    unsubscribers.push(onValue(target,snap=>receive(site,rows.concat(Object.values(snap.val()||{}).map(sale=>[site,sale]))),failed));
+   }).catch(failed);
+   continue;
+  }
   const source=ref(database,(testMode?'sales':'liveSales')+'/'+(site==='Porta'?'porta':'center-mall'));
   const target=first?query(source,orderByChild('at'),startAt(Date.parse(first+'T00:00:00+08:00')),endBefore(Date.parse(last+'T00:00:00+08:00')+86400000)):source;
-  unsubscribers.push(onValue(target,snapshot=>{
-   if(current!==generation)return;
-   snapshots.set(site,Object.values(snapshot.val()||{}).map(sale=>[site,sale]));
-   if(snapshots.size!==sites.length)return;
-   const rows=[...snapshots.values()].flat();
-   window.setMeltedCloudSales(rows);
-   document.querySelector('header small').textContent=testMode?'TEST MODE':'Live sales';
-   status.textContent=rows.length+' '+(testMode?'test':'live')+' sales in this view';
-  },()=>{
-   if(current!==generation)return;
-   status.textContent='Could not load sales. Check Firebase access and reload.';
-   document.querySelector('#report').textContent=status.textContent;
-  }));
+  unsubscribers.push(onValue(target,snapshot=>receive(site,Object.values(snapshot.val()||{}).map(sale=>[site,sale])),failed));
+ }
+ function receive(site,entries){
+  if(current!==generation)return;
+  snapshots.set(site,entries);
+  if(snapshots.size!==sites.length)return;
+  const rows=[...snapshots.values()].flat();
+  window.setMeltedCloudSales(rows);
+  document.querySelector('header small').textContent=testMode?'TEST MODE':'Live sales';
+  status.textContent=tab==='History'?'Sales history loaded':rows.length+' '+(testMode?'test':'live')+' sales in this view';
+ }
+ function failed(){
+  if(current!==generation)return;
+  status.textContent='Could not load sales. Check Firebase access and reload.';
+  document.querySelector('#report').textContent=status.textContent;
  }
 };
 mode.addEventListener('click',()=>{
