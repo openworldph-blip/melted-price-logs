@@ -473,6 +473,31 @@ const app=initializeApp(config);
 const auth=getAuth(app);
 const database=getDatabase(app,'https://melted-price-logs-pilot-default-rtdb.asia-southeast1.firebasedatabase.app');
 let stopSales, stopCatalog;
+let ownerActive=false, testMode=false;
+const mode=document.createElement('button');
+mode.type='button';
+mode.hidden=true;
+mode.textContent='Show test sales';
+document.querySelector('#owner-login').append(mode);
+function watchSales(){
+ stopSales?.();
+ window.setMeltedCloudSales([]);
+ document.querySelector('header small').textContent=testMode?'TEST MODE':'Live sales';
+ status.textContent='Loading '+(testMode?'test':'live')+' sales…';
+ stopSales=onValue(ref(database,testMode?'sales':'liveSales'),snapshot=>{
+  const data=snapshot.val()||{};
+  const rows=[['Porta',data.porta],['Center Mall',data['center-mall']]].flatMap(([branch,sales])=>Object.values(sales||{}).map(sale=>[branch,sale]));
+  window.setMeltedCloudSales(rows);
+  document.querySelector('header small').textContent=testMode?'TEST MODE':'Live sales';
+  status.textContent=rows.length?rows.length+(testMode?' test':' live')+' sales loaded':(testMode?'No test sales yet.':'No live sales yet.');
+ },()=>{status.textContent=testMode?'Test sales access denied.':'Live sales access has not been configured.';});
+}
+mode.addEventListener('click',()=>{
+ if(!ownerActive)return;
+ testMode=!testMode;
+ mode.textContent=testMode?'Show live sales':'Show test sales';
+ watchSales();
+});
 window.publishMeltedCatalog=changes=>update(ref(database),changes);
 const login=document.querySelector('#owner-sign-in');
 const logout=document.querySelector('#owner-sign-out');
@@ -485,20 +510,17 @@ onAuthStateChanged(auth,user=>{
  login.hidden=Boolean(user);
  login.disabled=false;
  logout.hidden=!user;
+ ownerActive=user?.uid==='SefNfee1nKURnXcOMrzRuxYihVI3';
+ mode.hidden=!ownerActive;
+ testMode=false;
+ mode.textContent='Show test sales';
  if(!user||user.uid!=='SefNfee1nKURnXcOMrzRuxYihVI3'){
   window.setMeltedCloudSales(null);
   status.textContent=user?'This account is not yet authorized for pilot sales.':'Sign in to view pilot uploads.';
   return;
  }
  stopCatalog=onValue(ref(database,'catalog'),snap=>window.loadMeltedCatalog(snap.val()||{}),()=>window.loadMeltedCatalog(null));
- window.setMeltedCloudSales([]);
- status.textContent='Checking for pilot uploads…';
- stopSales=onValue(ref(database,'sales'),snapshot=>{
-  const data=snapshot.val()||{};
-  const rows=[['Porta',data.porta],['Center Mall',data['center-mall']]].flatMap(([branch,sales])=>Object.values(sales||{}).map(sale=>[branch,sale]));
-  window.setMeltedCloudSales(rows);
-  status.textContent=rows.length?'Connected · '+rows.length+' pilot uploads':'Connected · Waiting for the first pilot upload';
- },()=>{window.setMeltedCloudSales([]);status.textContent='Firebase denied sales access. Check the published database rules.';});
+ watchSales();
 },()=>{status.textContent='Could not check sign-in. Reload to retry.';});
 login.addEventListener('click',async()=>{
  login.disabled=true;
