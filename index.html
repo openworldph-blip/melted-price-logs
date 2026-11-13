@@ -640,11 +640,11 @@ onAuthStateChanged(auth,user=>{
  login.disabled=false;
  logout.hidden=!user;
  document.querySelector('#owner-menu').hidden=!user;
- ownerActive=user?.uid==='SefNfee1nKURnXcOMrzRuxYihVI3';
+ ownerActive=['SefNfee1nKURnXcOMrzRuxYihVI3','Bq6tVPEnaBbPtvpGbBc7lnQRPap2'].includes(user?.uid);
  mode.hidden=!ownerActive;
  testMode=false;
  mode.textContent='Show test sales';
- if(!user||user.uid!=='SefNfee1nKURnXcOMrzRuxYihVI3'){
+ if(!ownerActive){
   window.setMeltedCloudSales(null);
   status.textContent=user?'This account is not yet authorized for pilot sales.':'Sign in to view pilot uploads.';
   return;
