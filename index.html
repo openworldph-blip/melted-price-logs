@@ -144,10 +144,16 @@ function ranking(list){
     '<li><span>'+name+'</span><strong>'+item.qty+'</strong><strong>'+fmt(item.amount)+'</strong></li>').join('')+'</ol>':'<p>No items sold in this period.</p>');
 }
 function history(list){
- return card('Sales by day',[...new Set(list.map(s=>s.date))].sort().reverse().map(d=>{
-  const orders=list.filter(s=>s.date===d);
-  return '<button class="history-day row" data-kind="date" data-value="'+d+'"><span>'+d+' · '+orders.length+' sales</span><strong>'+fmt(sum(orders,total))+'</strong></button>';
- }).join(''));
+ const days=new Map();
+ for(const sale of list){
+  const day=days.get(sale.date)||{count:0,amount:0};
+  day.count++;
+  day.amount+=total(sale);
+  days.set(sale.date,day);
+ }
+ return card('Sales by day',[...days].sort(([a],[b])=>b.localeCompare(a)).map(([d,day])=>
+  '<button class="history-day row" data-kind="date" data-value="'+d+'"><span>'+d+' · '+day.count+' sales</span><strong>'+fmt(day.amount)+'</strong></button>'
+ ).join('')||'<p>No sales yet.</p>');
 }
 function hourlySales(list){
  const hours=new Map();
@@ -500,7 +506,7 @@ window.refreshMeltedReport=(tab,date,branch,start,today)=>{
  const current=++generation;
  const unsubscribers=[];
  stopSales=()=>{for(const unsubscribe of unsubscribers)unsubscribe();};
- status.textContent='Loading '+(testMode?'test':'live')+' sales…';
+ status.textContent=tab==='History'?'Loading sales archive…':'Loading '+(testMode?'test':'live')+' sales…';
  document.querySelector('header small').textContent=testMode?'TEST MODE':'Live sales';
  document.querySelector('#report').textContent=status.textContent;
  const snapshots=new Map();
