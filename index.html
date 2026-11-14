@@ -567,7 +567,13 @@ let ownerActive=false, testMode=false;
 const mode=document.createElement('button');
 mode.type='button';
 mode.hidden=true;
-mode.textContent='Show test sales';
+mode.setAttribute('role','switch');
+mode.setAttribute('aria-label','Demo sales');
+function renderMode(){
+ mode.setAttribute('aria-checked',String(testMode));
+ mode.textContent=testMode?'● Demo / Live':'Demo / ● Live';
+}
+renderMode();
 document.querySelector('#account-actions').prepend(mode);
 let reportKey='', generation=0;
 function watchSales(){
@@ -586,8 +592,8 @@ window.refreshMeltedReport=(tab,date,branch,start,today)=>{
  const current=++generation;
  const unsubscribers=[];
  stopSales=()=>{for(const unsubscribe of unsubscribers)unsubscribe();};
- status.textContent=tab==='History'?'Loading sales archive…':'Loading '+(testMode?'test':'live')+' sales…';
- document.querySelector('header small').textContent=testMode?'TEST MODE':'Live sales';
+ status.textContent=tab==='History'?'Loading sales archive…':'Loading '+(testMode?'demo':'live')+' sales…';
+ document.querySelector('header small').textContent=testMode?'Demo sales':'Live sales';
  document.querySelector('#report').textContent=status.textContent;
  const snapshots=new Map();
  for(const site of sites){
@@ -615,8 +621,8 @@ window.refreshMeltedReport=(tab,date,branch,start,today)=>{
   if(snapshots.size!==sites.length)return;
   const rows=[...snapshots.values()].flat();
   window.setMeltedCloudSales(rows);
-  document.querySelector('header small').textContent=testMode?'TEST MODE':'Live sales';
-  status.textContent=tab==='History'?'Sales history loaded':rows.length+' '+(testMode?'test':'live')+' sales in this view';
+  document.querySelector('header small').textContent=testMode?'Demo sales':'Live sales';
+  status.textContent=tab==='History'?'Sales history loaded':rows.length+' '+(testMode?'demo':'live')+' sales in this view';
  }
  function failed(){
   if(current!==generation)return;
@@ -627,7 +633,7 @@ window.refreshMeltedReport=(tab,date,branch,start,today)=>{
 mode.addEventListener('click',()=>{
  if(!ownerActive)return;
  testMode=!testMode;
- mode.textContent=testMode?'Show live sales':'Show test sales';
+ renderMode();
  watchSales();
 });
 window.publishMeltedCatalog=changes=>update(ref(database),changes);
@@ -648,7 +654,7 @@ onAuthStateChanged(auth,user=>{
  ownerActive=['SefNfee1nKURnXcOMrzRuxYihVI3','Bq6tVPEnaBbPtvpGbBc7lnQRPap2','qYAyxpzSLHcB15ATcMyg16u6Ott1'].includes(user?.uid);
  mode.hidden=!ownerActive;
  testMode=false;
- mode.textContent='Show test sales';
+ renderMode();
  if(!ownerActive){
   window.setMeltedCloudSales(null);
   status.textContent=user?'This account is not yet authorized for pilot sales.':'Sign in to view pilot uploads.';
