@@ -335,11 +335,10 @@ function visibilityView(){
 function productEditor(){
  const product=previewCatalog[productIndex];
  return productMode==='Search & edit'&&!product?'':card(product?'Change price · <span class="editor-product-name">'+safeText(productName(product))+'</span>':'Add one item',
-  '<form id="product-editor">'+(product?'<p>'+locations.map(site=>site+' '+(product.prices[site]==null?'—':fmt(product.prices[site])+(product.paused?.[site]?' (Sold out)':''))).join(' · ')+'</p>':
+  '<form id="product-editor">'+(product?'<p>'+locations.map(site=>site+' '+(product.prices[site]==null?'—':fmt(product.prices[site]))).join(' · ')+'</p>':
   '<label>Product name<input name="name" required maxlength="150"></label><label>Size / Pack<input name="pack" maxlength="60"></label><label>Search alias<input name="alias" maxlength="60"></label>')+
   '<label>Selling price<input name="price" type="number" min="0.01" max="999999.99" step="0.01" required></label>'+
-  '<label>Apply to<select name="site">'+productBranches()+'</select></label><button>Publish product update</button></form>'+
-  (product?'<form id="product-availability"><label>Branch <select name="site">'+productBranches()+'</select></label><label>Availability <select name="availability"><option value="out">Sold out</option><option value="on">Available</option></select></label><button>Publish availability</button></form>':''));
+  '<label>Apply to<select name="site">'+productBranches()+'</select></label><button>Publish product update</button></form>');
 }
 function previewResetControls(){
  if(connectedSales)return '';
@@ -393,21 +392,6 @@ function bulkImport(){
  '<button data-kind="publish-batch" '+(batchBusy||!plan.added?'disabled':'')+'>Publish new listings</button>':'<p class="muted">Sign in as owner to publish.</p>'));
 }
 document.addEventListener('submit',async event=>{
- if(event.target.id==='product-availability'){
-  event.preventDefault();
-  if(!catalogReady)return;
-  const product=previewCatalog[productIndex];
-  const values=Object.fromEntries(new FormData(event.target));
-  const sites=(values.site==='Both branches'?locations:[values.site]).filter(site=>product?.prices[site]!=null);
-  if(!sites.length){productNotice='This item is not listed at the selected branch.';render();return;}
-  event.target.querySelector('button').disabled=true;
-  try{
-   await window.publishMeltedCatalog(Object.fromEntries(sites.map(site=>['catalog/'+branchPaths[site]+'/'+product.id,
-    {name:product.name,pack:product.pack,alias:product.alias,price:Math.round(product.prices[site]*100),paused:values.availability==='out'}])));
-   productNotice=(values.availability==='out'?'Sold out':'Available')+' · '+sites.join(' and ');
-  }catch{productNotice='Availability update failed. Try again.';}
-  render();return;
- }
  if(event.target.id==='product-editor'){
   event.preventDefault();
   if(!catalogReady){productNotice='Sign in as owner and enable catalog access in Firebase.';render();return;}
@@ -491,7 +475,7 @@ document.addEventListener('click',async event=>{
    await window.publishMeltedCatalog(product.cloud?.[site]?{[path+'/paused']:paused}:{[path]:{
     name:product.name,pack:product.pack,alias:product.alias,price:Math.round(product.prices[site]*100),paused
    }});
-   productNotice=productName(product)+' · '+site+' · '+(paused?'Sold out':'Available');
+   productNotice=productName(product)+' · '+site+' · '+(paused?'Off':'On');
   }catch{productNotice='Availability update failed. Try again.';}
   render();return;
  }
